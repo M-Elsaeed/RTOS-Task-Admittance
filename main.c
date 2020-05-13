@@ -2,11 +2,6 @@
 #include "task.h"
 #include <stdio.h>
 #include <stdlib.h>
-/* Demo includes. */
-#include "basic_io.h"
-
-/* Used as a loop counter to create a very crude delay. */
-#define mainDELAY_LOOP_COUNT (0xfffff)
 
 /* The task function. */
 void vTaskFunction(void *pvParameters);
@@ -81,18 +76,51 @@ void printTasks(Tasks a_tasksArr[], int a_size)
 }
 
 int currTasks = 0;
-Tasks arrayOfTasks[1000];
+Tasks *arrayOfTasks;
 
 void admitTask(Tasks newTask)
 {
-	// arrayOfTasks = realloc(arrayOfTasks, (currTasks + 1) * sizeof(Tasks));
-	// if (!arrayOfTasks)
-	// 	printf("inFailed\n");
-	// else
-	// 	printf("inSuccess\n");
+	int i = 0;
+	Tasks *temp = malloc((currTasks + 1) * sizeof(Tasks));
+
+	if (!temp)
+		printf("allocNO\n");
+	else
+		printf("allocOK\n");
+
+	for (i = 0; i < currTasks; i++)
+	{
+		temp[i] = arrayOfTasks[i];
+	}
+
+	free(arrayOfTasks);
+	arrayOfTasks = temp;
 	arrayOfTasks[currTasks++] = newTask;
-	// computeUtilization(arrayOfTasks, currTasks);
-	// printTasks(arrayOfTasks, currTasks);
+	sortAndPrioritize(arrayOfTasks, currTasks);
+}
+void deleteTask(int index)
+{
+	int i = 0;
+	Tasks *temp = malloc((currTasks - 1) * sizeof(Tasks));
+
+	if (!temp)
+		printf("allocNO\n");
+	else
+		printf("allocOK\n");
+
+	for (i = 0; i < index; i++)
+	{
+		temp[i] = arrayOfTasks[i];
+	}
+	for (i = index + 1; i < currTasks; i++)
+	{
+		temp[i-1] = arrayOfTasks[i];
+	}
+
+	free(arrayOfTasks);
+	arrayOfTasks = temp;
+	currTasks --;
+	sortAndPrioritize(arrayOfTasks, currTasks);
 }
 int main(void)
 {
@@ -120,7 +148,8 @@ int main(void)
 	admitTask(tempTask);
 
 	printTasks(arrayOfTasks, currTasks);
-
+	deleteTask(2);
+	printTasks(arrayOfTasks, currTasks);
 	// sortAndPrioritize(arrayOfTasks, currTasks);
 	/* Create one of the two tasks. */
 	//	xTaskCreate(vTaskFunction,			/* Pointer to the function that implements the task. */
