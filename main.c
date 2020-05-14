@@ -7,8 +7,8 @@ typedef struct Task
 {
 	int id;
 	double arrival;
-	double period;		//Safe: random from 3xTc(i) to maximum_period_multipler x Tc(i) | No Guarantee: random from from 3xTc(i) to 10xTc(i)
-	double computation; // random from 1 to maximum_computation_time
+	double period;
+	double computation;
 	int priority;
 	xTaskHandle handle;
 } Task;
@@ -28,8 +28,11 @@ int g_time = 0;
 xTaskHandle g_schedulerHandle;
 
 #define N 5
+#define tst 1;
+#define LATEST_ARRIVAL_TIME 50
+#define MAXIMUM_COMPUTATION_TIME 8
+#define MAXIMUM_PERIOD_MULTIPLER 17
 #define SAFE_MODE 0
-
 int main(void)
 {
 	int i = 0;
@@ -39,8 +42,17 @@ int main(void)
 	{
 		tempTask.id = i + 1;
 		tempTask.arrival = (double)(rand() % (20 * (i + 1))) + 1;
-		tempTask.period = (double)(rand() % 100) + 1;
-		tempTask.computation = (double)(rand() % (int)tempTask.period) + 1;
+		// random from 1 to maximum_computation_time
+		tempTask.computation = (double)(rand() % (int)MAXIMUM_COMPUTATION_TIME) + 1;
+
+#if SAFE_MODE == 1
+		// Safe: random from 3xTc(i) to maximum_period_multipler x Tc(i)
+		tempTask.period = (double)(rand() % (MAXIMUM_PERIOD_MULTIPLER - 2)) + 3;
+#else
+		// No Guarantee: random from from 3xTc(i) to 10xTc(i)
+		tempTask.period = (double)(rand() % (10 - 2)) + 3;
+#endif
+
 		tempTask.handle = NULL;
 		admitTask(tempTask);
 	}
