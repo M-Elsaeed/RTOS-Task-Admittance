@@ -362,7 +362,7 @@
               <MiscControls></MiscControls>
               <Define></Define>
               <Undefine></Undefine>
-              <IncludePath>..\Proj2;.\include;.\portable\RVDS\ARM_CM3;.\demo_code</IncludePath>
+              <IncludePath>..\RTOS-Task-Admittance;.\include;.\portable\RVDS\ARM_CM3;.\demo_code</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>

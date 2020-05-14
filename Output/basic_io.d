@@ -3,7 +3,7 @@
 .\output\basic_io.o: .\include\FreeRTOS.h
 .\output\basic_io.o: D:\Keil\ARM\ARMCC\bin\..\include\stddef.h
 .\output\basic_io.o: .\include\projdefs.h
-.\output\basic_io.o: ..\Proj2\FreeRTOSConfig.h
+.\output\basic_io.o: ..\RTOS-Task-Admittance\FreeRTOSConfig.h
 .\output\basic_io.o: .\include\portable.h
 .\output\basic_io.o: .\portable\RVDS\ARM_CM3\portmacro.h
 .\output\basic_io.o: .\include\mpu_wrappers.h

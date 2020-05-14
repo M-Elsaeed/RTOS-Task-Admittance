@@ -5,7 +5,7 @@
 .\output\tasks.o: .\include\FreeRTOS.h
 .\output\tasks.o: D:\Keil\ARM\ARMCC\bin\..\include\stddef.h
 .\output\tasks.o: .\include\projdefs.h
-.\output\tasks.o: ..\Proj2\FreeRTOSConfig.h
+.\output\tasks.o: ..\RTOS-Task-Admittance\FreeRTOSConfig.h
 .\output\tasks.o: .\include\portable.h
 .\output\tasks.o: .\portable\RVDS\ARM_CM3\portmacro.h
 .\output\tasks.o: .\include\mpu_wrappers.h

@@ -2,7 +2,7 @@
 .\output\port.o: .\include\FreeRTOS.h
 .\output\port.o: D:\Keil\ARM\ARMCC\bin\..\include\stddef.h
 .\output\port.o: .\include\projdefs.h
-.\output\port.o: ..\Proj2\FreeRTOSConfig.h
+.\output\port.o: ..\RTOS-Task-Admittance\FreeRTOSConfig.h
 .\output\port.o: .\include\portable.h
 .\output\port.o: .\portable\RVDS\ARM_CM3\portmacro.h
 .\output\port.o: .\include\mpu_wrappers.h
