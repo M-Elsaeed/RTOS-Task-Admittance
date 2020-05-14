@@ -11,6 +11,7 @@ defined const and off the stack to ensure they remain valid when the tasks are
 executing. */
 const char *pcTextForTask1 = "Task 1 is running\n";
 const char *pcTextForTask2 = "Task 2 is running\n";
+void taskScheduler(void *pvParameters);
 
 int n = 5;
 #define TST 1
@@ -20,9 +21,10 @@ typedef struct Task
 {
 	int id;
 	double arrival;
-	double period; //Safe: random from 3xTc(i) to maximum_period_multipler x Tc(i) | No Guarantee: random from from 3xTc(i) to 10xTc(i)
+	double period;		//Safe: random from 3xTc(i) to maximum_period_multipler x Tc(i) | No Guarantee: random from from 3xTc(i) to 10xTc(i)
 	double computation; // random from 1 to maximum_computation_time
 	int priority;
+	xTaskHandle handle;
 } Task;
 
 static int myCompare(const void *a, const void *b)
@@ -32,6 +34,7 @@ static int myCompare(const void *a, const void *b)
 	const Task *t2 = (Task *)b;
 	// setting up rules for comparison
 	return t1->period < t2->period;
+	// return t1->arrival < t2->arrival;
 }
 
 // Function to sortAndPrioritize the array
@@ -39,7 +42,6 @@ void sortAndPrioritize(Task arr[], int n)
 {
 	int i = 0, lastPriority = 1;
 	qsort(arr, n, sizeof(Task), myCompare);
-
 
 	for (i = 0; i < n - 1; i++)
 	{
@@ -70,13 +72,13 @@ void printTasks(Task a_tasksArr[], int a_size)
 	printf("Print called\n");
 	for (i = 0; i < a_size; i++)
 	{
-		printf("id:%d pri: %d, com: %lf, per: %lf \n", a_tasksArr[i].id, a_tasksArr[i].priority, a_tasksArr[i].computation, a_tasksArr[i].period);
+		printf("id:%d, ari:%lf  pri: %d, com: %lf, per: %lf \n", a_tasksArr[i].id,  a_tasksArr[i].arrival, a_tasksArr[i].priority, a_tasksArr[i].computation, a_tasksArr[i].period);
 	}
 }
 
 int currTasks = 0;
 Task *arrayOfTasks;
-
+int maxTime = 0;
 void admitTask(Task newTask)
 {
 	int i = 0;
@@ -95,6 +97,8 @@ void admitTask(Task newTask)
 	free(arrayOfTasks);
 	arrayOfTasks = temp;
 	arrayOfTasks[currTasks++] = newTask;
+	if (newTask.arrival + newTask.period > maxTime)
+		maxTime = newTask.arrival + newTask.period;
 	sortAndPrioritize(arrayOfTasks, currTasks);
 }
 
@@ -104,9 +108,9 @@ void deleteTask(int index)
 	Task *temp = malloc((currTasks - 1) * sizeof(Task));
 
 	if (!temp)
-		printf("allocNO\n");
+		printf("dallocNO\n");
 	else
-		printf("allocOK\n");
+		printf("dallocOK\n");
 
 	for (i = 0; i < index; i++)
 	{
@@ -123,43 +127,58 @@ void deleteTask(int index)
 	sortAndPrioritize(arrayOfTasks, currTasks);
 }
 
+int time = 0;
+xTaskHandle schedulerHandle;
 int main(void)
 {
+	int i = 0;
 	Task tempTask = {1, 3, 11, 2};
-	admitTask(tempTask);
+	srand(0);
+	for (i = 0; i < n; i++)
+	{
+		tempTask.id = i + 1;
+		tempTask.arrival = (double)(rand() % (20 * (i + 1))) + 1;
+		tempTask.period = 5;//(double)(rand() % 20) + 1;
+		tempTask.computation = (double)(rand() % (int)tempTask.period) + 1;
+		admitTask(tempTask);
+	}
+	printTasks(arrayOfTasks, currTasks);
+	printf("max %d\n", maxTime);
+	xTaskCreate(taskScheduler, "scheduler", 100, NULL, n + 1, &schedulerHandle);
+	// admitTask(tempTask);
 
-	tempTask.id = 2;
-	tempTask.arrival = 9;
-	tempTask.period = 20;
-	tempTask.computation = 1;
-	admitTask(tempTask);
+	// tempTask.id = 2;
+	// tempTask.arrival = 9;
+	// tempTask.period = 20;
+	// tempTask.computation = 1;
+	// admitTask(tempTask);
 
-	tempTask.id = 3;
-	tempTask.arrival = 12;
-	tempTask.period = 32;
-	tempTask.computation = 5;
-	admitTask(tempTask);
+	// tempTask.id = 3;
+	// tempTask.arrival = 12;
+	// tempTask.period = 32;
+	// tempTask.computation = 5;
+	// admitTask(tempTask);
 
-	tempTask.id = 4;
-	tempTask.arrival = 6;
-	tempTask.period = 27;
-	tempTask.computation = 4;
-	admitTask(tempTask);
+	// tempTask.id = 4;
+	// tempTask.arrival = 6;
+	// tempTask.period = 27;
+	// tempTask.computation = 4;
+	// admitTask(tempTask);
 
-	tempTask.id = 5;
-	tempTask.arrival = 13;
-	tempTask.period = 13;
-	tempTask.computation = 1;
-	admitTask(tempTask);
+	// tempTask.id = 5;
+	// tempTask.arrival = 13;
+	// tempTask.period = 13;
+	// tempTask.computation = 1;
+	// admitTask(tempTask);
 
-	tempTask.id = 5;
-	tempTask.arrival = 13;
-	tempTask.period = 13;
-	tempTask.computation = 1;
-	admitTask(tempTask);
+	// tempTask.id = 5;
+	// tempTask.arrival = 13;
+	// tempTask.period = 13;
+	// tempTask.computation = 1;
+	// admitTask(tempTask);
 	// printTasks(arrayOfTasks, currTasks);
 	// deleteTask(2);
-	printTasks(arrayOfTasks, currTasks);
+	// printTasks(arrayOfTasks, currTasks);
 	// sortAndPrioritize(arrayOfTasks, currTasks);
 	/* Create one of the two tasks. */
 	// xTaskCreate(vTaskFunction,			/* Pointer to the function that implements the task. */
@@ -172,12 +191,12 @@ int main(void)
 	/* Create the other task in exactly the same way.  Note this time that we
 	are creating the SAME task, but passing in a different parameter.  We are
 	creating two instances of a single task implementation. */
-	xTaskCreate(vTaskFunction, "Task 1", 100, (void *)&arrayOfTasks[0], 1, NULL);
-	xTaskCreate(vTaskFunction, "Task 2", 100, (void *)&arrayOfTasks[1], 1, NULL);
-	xTaskCreate(vTaskFunction, "Task 3", 100, (void *)&arrayOfTasks[2], 1, NULL);
-	xTaskCreate(vTaskFunction, "Task 4", 100, (void *)&arrayOfTasks[3], 1, NULL);
-	xTaskCreate(vTaskFunction, "Task 5", 100, (void *)&arrayOfTasks[4], 1, NULL);
-	xTaskCreate(vTaskFunction, "Task 6", 100, (void *)&arrayOfTasks[5], 1, NULL);
+	// xTaskCreate(vTaskFunction, "Task 1", 100, (void *)&arrayOfTasks[0], 1, &(arrayOfTasks[0].handle));
+	// xTaskCreate(vTaskFunction, "Task 2", 100, (void *)&arrayOfTasks[1], 1, &(arrayOfTasks[1].handle));
+	// xTaskCreate(vTaskFunction, "Task 3", 100, (void *)&arrayOfTasks[2], 1, &(arrayOfTasks[2].handle));
+	// xTaskCreate(vTaskFunction, "Task 4", 100, (void *)&arrayOfTasks[3], 1, &(arrayOfTasks[3].handle));
+	// xTaskCreate(vTaskFunction, "Task 5", 100, (void *)&arrayOfTasks[4], 1, &(arrayOfTasks[4].handle));
+	// xTaskCreate(vTaskFunction, "Task 6", 100, (void *)&arrayOfTasks[5], 1, &(arrayOfTasks[5].handle));
 	/* Start the scheduler so our tasks start executing. */
 	vTaskStartScheduler();
 
@@ -196,7 +215,43 @@ void vTaskFunction(void *pvParameters)
 	/* As per most tasks, this task is implemented in an infinite loop. */
 	for (;;)
 	{
-		printf("%d\n", t.id);
+		// printf("%d\n", t.id);
+		vTaskSuspendAll();
+		printf("t%d\n", t.id);
+		xTaskResumeAll();
+	}
+}
+
+void taskScheduler(void *pvParameters)
+{
+	int i = 0;
+	/* As per most tasks, this task is implemented in an infinite loop. */
+	for (;;)
+	{
+		if (time <= maxTime)
+		{
+			vTaskSuspendAll();
+			printf("\t%d\n", time);
+			xTaskResumeAll();
+			for (i = 0; i < currTasks; i++)
+			{
+				if (time > (arrayOfTasks[i].arrival + arrayOfTasks[i].period))
+				{
+					vTaskDelete(arrayOfTasks[i].handle);
+					deleteTask(i);
+					i--;
+				}
+				else if (arrayOfTasks[i].arrival >= time)
+				{
+					xTaskCreate(vTaskFunction, NULL, 100, (void *)&arrayOfTasks[i], arrayOfTasks[i].priority, &(arrayOfTasks[i].handle));
+				}
+			}
+			vTaskSuspend(NULL);
+		}
+		else{
+			vTaskSuspendAll();
+			vTaskResume(NULL);
+		}
 	}
 }
 // /*-----------------------------------------------------------*/
@@ -230,9 +285,14 @@ void vTaskFunction(void *pvParameters)
 // }
 // /*-----------------------------------------------------------*/
 
-// void vApplicationTickHook(void)
-// {
-// 	/* This example does not use the tick hook to perform any processing.   The
-// 	tick hook will only be called if configUSE_TICK_HOOK is set to 1 in
-// 	FreeRTOSConfig.h. */
-// }
+void vApplicationTickHook(void)
+{
+	/* This example does not use the tick hook to perform any processing.   The
+ 	tick hook will only be called if configUSE_TICK_HOOK is set to 1 in
+ 	FreeRTOSConfig.h. */
+	if (time <= maxTime)
+	{
+		time++;
+	}
+	vTaskResume(schedulerHandle);
+}

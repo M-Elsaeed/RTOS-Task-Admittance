@@ -52,8 +52,8 @@
 
 #define configUSE_PREEMPTION		1
 #define configUSE_IDLE_HOOK			0
-#define configMAX_PRIORITIES		( ( unsigned portBASE_TYPE ) 5 )
-#define configUSE_TICK_HOOK			0
+#define configMAX_PRIORITIES		( ( unsigned portBASE_TYPE ) 10 )
+#define configUSE_TICK_HOOK			1
 #define configCPU_CLOCK_HZ			( 12000000UL )
 #define configTICK_RATE_HZ			( ( portTickType ) 1000 )
 #define configMINIMAL_STACK_SIZE	( ( unsigned short ) 100 )
@@ -78,13 +78,13 @@
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
 
-#define INCLUDE_vTaskPrioritySet			0
-#define INCLUDE_uxTaskPriorityGet			0
-#define INCLUDE_vTaskDelete					0
+#define INCLUDE_vTaskPrioritySet			1
+#define INCLUDE_uxTaskPriorityGet			1
+#define INCLUDE_vTaskDelete					1
 #define INCLUDE_vTaskCleanUpResources		0
 #define INCLUDE_vTaskSuspend				1
 #define INCLUDE_vTaskDelayUntil				0
-#define INCLUDE_vTaskDelay					0
+#define INCLUDE_vTaskDelay					1
 #define INCLUDE_uxTaskGetStackHighWaterMark	0
 
 /* Use the system definition, if there is one */
