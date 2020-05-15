@@ -6,9 +6,9 @@
 typedef struct Task
 {
 	int id;
-	double arrival;
-	double period;
-	double computation;
+	int arrival;
+	int period;
+	int computation;
 	int priority;
 	xTaskHandle handle;
 } Task;
@@ -20,6 +20,7 @@ void printTasks(Task a_tasksArr[], int a_size);
 void admitTask(Task a_newTask);
 void deleteTask(int a_index);
 double computeUtilization(Task a_tasksArr[], int a_size);
+void addRandomTasks();
 
 int g_currTasks = 0;
 Task *g_arrayOfTasks;
@@ -33,34 +34,15 @@ xTaskHandle g_schedulerHandle;
 #define MAXIMUM_COMPUTATION_TIME 8
 #define MAXIMUM_PERIOD_MULTIPLER 17
 #define SAFE_MODE 0
+#define MAXIMUM_ARRIVAL_TIME 40
 int main(void)
 {
-	int i = 0;
-	Task tempTask;
-	srand(0);
-	for (i = 0; i < N; i++)
-	{
-		tempTask.id = i + 1;
-		tempTask.arrival = (double)(rand() % (20 * (i + 1))) + 1;
-		// random from 1 to maximum_computation_time
-		tempTask.computation = (double)(rand() % (int)MAXIMUM_COMPUTATION_TIME) + 1;
-
-#if SAFE_MODE == 1
-		// Safe: random from 3xTc(i) to maximum_period_multipler x Tc(i)
-		tempTask.period = (double)(rand() % (MAXIMUM_PERIOD_MULTIPLER - 2)) + 3;
-#else
-		// No Guarantee: random from from 3xTc(i) to 10xTc(i)
-		tempTask.period = (double)(rand() % (10 - 2)) + 3;
-#endif
-
-		tempTask.handle = NULL;
-		admitTask(tempTask);
-	}
+	addRandomTasks();
 	printTasks(g_arrayOfTasks, g_currTasks);
+	computeUtilization(g_arrayOfTasks, g_currTasks);
 	printf("max %d\n", g_maxTime);
-	xTaskCreate(taskScheduler, "scheduler", 100, NULL, N + 1, &g_schedulerHandle);
+	xTaskCreate(taskScheduler, "scheduler", configMINIMAL_STACK_SIZE, NULL, N + 1, &g_schedulerHandle);
 	vTaskStartScheduler();
-
 	while (1)
 		;
 }
@@ -75,18 +57,19 @@ void taskScheduler(void *a_pvParameters)
 			printf("\t%d\n", g_time);
 			for (i = 0; i < g_currTasks; i++)
 			{
-				if (g_time >= (g_arrayOfTasks[i].arrival + g_arrayOfTasks[i].period))
+				if (g_time == (g_arrayOfTasks[i].arrival + g_arrayOfTasks[i].period))
 				{
 					vTaskDelete(g_arrayOfTasks[i].handle);
 					deleteTask(i);
 					i--;
 				}
-				else if ((g_arrayOfTasks[i].arrival <= g_time) && (!g_arrayOfTasks[i].handle))
+				else if ((g_arrayOfTasks[i].arrival == g_time))
 				{
-					printf("\t\ttsk %d\n", g_arrayOfTasks[i].id);
-					xTaskCreate(genFunction, NULL, 100, (void *)&g_arrayOfTasks[i], g_arrayOfTasks[i].priority, &(g_arrayOfTasks[i].handle));
+					printf("\t\tcreate id:%d, ari:%d  pri: %d, com: %d, per: %d \n", g_arrayOfTasks[i].id, g_arrayOfTasks[i].arrival, g_arrayOfTasks[i].priority, g_arrayOfTasks[i].computation, g_arrayOfTasks[i].period);
+					xTaskCreate(genFunction, NULL, configMINIMAL_STACK_SIZE, (void *)&g_arrayOfTasks[i], g_arrayOfTasks[i].priority, &(g_arrayOfTasks[i].handle));
 				}
 			}
+			g_time++;
 			vTaskSuspend(NULL);
 		}
 	}
@@ -96,7 +79,6 @@ void genFunction(void *a_pvParameters)
 {
 	Task t = *((Task *)(a_pvParameters));
 
-	/* As per most tasks, this task is implemented in an infinite loop. */
 	while (1)
 	{
 		vTaskSuspendAll();
@@ -110,9 +92,7 @@ static int myCompare(const void *a, const void *b)
 
 	const Task *t1 = (Task *)a;
 	const Task *t2 = (Task *)b;
-	// setting up rules for comparison
 	return t1->period < t2->period;
-	// return t1->arrival < t2->arrival;
 }
 
 void sortAndPrioritize(Task a_tasksArr[], int a_size)
@@ -136,8 +116,7 @@ double computeUtilization(Task a_tasksArr[], int a_size)
 	double cpuUtilization = 0.0;
 	for (i = 0; i < a_size; i++)
 	{
-		printf("c: %lf, p: %lf \n", a_tasksArr[i].computation, a_tasksArr[i].period);
-		cpuUtilization += (a_tasksArr[i].computation / a_tasksArr[i].period);
+		cpuUtilization += ((double)a_tasksArr[i].computation / (double)a_tasksArr[i].period);
 	}
 	printf("CPU Utilization: %lf \n", cpuUtilization);
 	return cpuUtilization;
@@ -149,7 +128,7 @@ void printTasks(Task a_tasksArr[], int a_size)
 	printf("Print called\n");
 	for (i = 0; i < a_size; i++)
 	{
-		printf("id:%d, ari:%lf  pri: %d, com: %lf, per: %lf \n", a_tasksArr[i].id, a_tasksArr[i].arrival, a_tasksArr[i].priority, a_tasksArr[i].computation, a_tasksArr[i].period);
+		printf("id:%d, ari:%d  pri: %d, com: %d, per: %d \n", a_tasksArr[i].id, a_tasksArr[i].arrival, a_tasksArr[i].priority, a_tasksArr[i].computation, a_tasksArr[i].period);
 	}
 }
 
@@ -207,45 +186,33 @@ void deleteTask(int a_index)
 	sortAndPrioritize(g_arrayOfTasks, g_currTasks);
 }
 
-// /*-----------------------------------------------------------*/
+void addRandomTasks()
+{
 
-// void vApplicationMallocFailedHook(void)
-// {
-// 	/* This function will only be called if an API call to create a task, queue
-// 	or semaphore fails because there is too little heap RAM remaining - and
-// 	configUSE_MALLOC_FAILED_HOOK is set to 1 in FreeRTOSConfig.h. */
-// 	while(1)
-// 		;
-// }
-// /*-----------------------------------------------------------*/
+	int i = 0;
+	Task tempTask;
+	srand(2);
+	for (i = 0; i < N; i++)
+	{
+		tempTask.id = i + 1;
+		tempTask.arrival = rand() % (MAXIMUM_ARRIVAL_TIME + 1);
+		// random from 1 to maximum_computation_time
+		tempTask.computation = (rand() % MAXIMUM_COMPUTATION_TIME) + 1;
 
-// void vApplicationStackOverflowHook(xTaskHandle *pxTask, signed char *pcTaskName)
-// {
-// 	/* This function will only be called if a task overflows its stack.  Note
-// 	that stack overflow checking does slow down the context switch
-// 	implementation and will only be performed if configCHECK_FOR_STACK_OVERFLOW
-// 	is set to either 1 or 2 in FreeRTOSConfig.h. */
-// 	while(1)
-// 		;
-// }
-// /*-----------------------------------------------------------*/
+#if SAFE_MODE == 1
+		// Safe: random from 3xTc(i) to maximum_period_multipler x Tc(i)
+		tempTask.period = ((rand() % (MAXIMUM_PERIOD_MULTIPLER - 2)) + 3) * tempTask.computation;
+#else
+		// No Guarantee: random from from 3xTc(i) to 10xTc(i)
+		tempTask.period = ((rand() % (10 - 2)) + 3) * tempTask.computation;
+#endif
 
-// void vApplicationIdleHook(void)
-// {
-// 	/* This example does not use the idle hook to perform any processing.  The
-// 	idle hook will only be called if configUSE_IDLE_HOOK is set to 1 in
-// 	FreeRTOSConfig.h. */
-// }
-// /*-----------------------------------------------------------*/
+		tempTask.handle = NULL;
+		admitTask(tempTask);
+	}
+}
 
 void vApplicationTickHook(void)
 {
-	/* This example does not use the tick hook to perform any processing.   The
- 	tick hook will only be called if configUSE_TICK_HOOK is set to 1 in
- 	FreeRTOSConfig.h. */
-	if (g_time <= g_maxTime + 1)
-	{
-		g_time++;
-	}
 	vTaskResume(g_schedulerHandle);
 }
