@@ -25,16 +25,14 @@ void addRandomTasks();
 int g_currTasks = 0;
 Task *g_arrayOfTasks;
 int g_maxTime = 0;
-int g_time = 0;
 xTaskHandle g_schedulerHandle;
 
 #define N 5
 #define tst 1;
-#define LATEST_ARRIVAL_TIME 50
+#define LATEST_ARRIVAL_TIME 15
 #define MAXIMUM_COMPUTATION_TIME 8
 #define MAXIMUM_PERIOD_MULTIPLER 17
 #define SAFE_MODE 0
-#define MAXIMUM_ARRIVAL_TIME 40
 
 int main(void)
 {
@@ -58,28 +56,29 @@ int main(void)
 void taskScheduler(void *a_pvParameters)
 {
 	int i = 0;
+	portTickType ticksTime = 0;
 	while (1)
 	{
-		// if (g_time <= (g_maxTime + 1))
+		// if (ticksTime <= (g_maxTime + 1))
 		while (g_currTasks)
 		{
-			printf("t = %d\n", g_time);
+			printf("t = %d\n", ticksTime);
 			for (i = 0; i < g_currTasks; i++)
 			{
-				// if (g_time == (g_arrayOfTasks[i].arrival + g_arrayOfTasks[i].period))
+				// if (ticksTime == (g_arrayOfTasks[i].arrival + g_arrayOfTasks[i].period))
 				if (g_arrayOfTasks[i].handle && (rand() % 3 == 0))
 				{
 					vTaskDelete(g_arrayOfTasks[i].handle);
 					deleteTask(i);
 					i--;
 				}
-				else if ((g_arrayOfTasks[i].arrival == g_time))
+				else if ((ticksTime >= g_arrayOfTasks[i].arrival) && (!g_arrayOfTasks[i].handle))
 				{
 					printf("\t\t\t\tcreate task id:%d, ari:%d  pri: %d, com: %d, per: %d \n", g_arrayOfTasks[i].id, g_arrayOfTasks[i].arrival, g_arrayOfTasks[i].priority, g_arrayOfTasks[i].computation, g_arrayOfTasks[i].period);
 					xTaskCreate(genFunction, NULL, configMINIMAL_STACK_SIZE, (void *)&g_arrayOfTasks[i], g_arrayOfTasks[i].priority, &(g_arrayOfTasks[i].handle));
 				}
 			}
-			g_time++;
+			ticksTime = xTaskGetTickCount();
 			vTaskSuspend(NULL);
 		}
 	}
@@ -88,12 +87,13 @@ void taskScheduler(void *a_pvParameters)
 void genFunction(void *a_pvParameters)
 {
 	Task t = *((Task *)(a_pvParameters));
-
+	portTickType tt = xTaskGetTickCount();
 	while (1)
 	{
 		vTaskSuspendAll();
 		printf("\t\ttask: %d running\n", t.id);
 		xTaskResumeAll();
+		vTaskDelayUntil(&tt, t.period);
 	}
 }
 
@@ -206,7 +206,7 @@ void addRandomTasks()
 	for (i = 0; i < N; i++)
 	{
 		tempTask.id = i + 1;
-		tempTask.arrival = rand() % (MAXIMUM_ARRIVAL_TIME + 1);
+		tempTask.arrival = rand() % (LATEST_ARRIVAL_TIME + 1);
 		// random from 1 to maximum_computation_time
 		tempTask.computation = (rand() % MAXIMUM_COMPUTATION_TIME) + 1;
 
