@@ -35,12 +35,20 @@ xTaskHandle g_schedulerHandle;
 #define MAXIMUM_PERIOD_MULTIPLER 17
 #define SAFE_MODE 0
 #define MAXIMUM_ARRIVAL_TIME 40
+
 int main(void)
 {
 	addRandomTasks();
 	printTasks(g_arrayOfTasks, g_currTasks);
-	computeUtilization(g_arrayOfTasks, g_currTasks);
-	printf("max %d\n", g_maxTime);
+	while (computeUtilization(g_arrayOfTasks, g_currTasks) > 0.7)
+	{
+		printf("Scheduling not possible\n");
+		g_currTasks = 0;
+		addRandomTasks();
+		printTasks(g_arrayOfTasks, g_currTasks);
+	}
+	printf("Scheduling OK\n\n");
+	// printf("max %d\n", g_maxTime);
 	xTaskCreate(taskScheduler, "scheduler", configMINIMAL_STACK_SIZE, NULL, N + 1, &g_schedulerHandle);
 	vTaskStartScheduler();
 	while (1)
@@ -52,12 +60,14 @@ void taskScheduler(void *a_pvParameters)
 	int i = 0;
 	while (1)
 	{
-		if (g_time <= (g_maxTime + 1))
+		// if (g_time <= (g_maxTime + 1))
+		while (g_currTasks)
 		{
-			printf("\t%d\n", g_time);
+			printf("t = %d\n", g_time);
 			for (i = 0; i < g_currTasks; i++)
 			{
-				if (g_time == (g_arrayOfTasks[i].arrival + g_arrayOfTasks[i].period))
+				// if (g_time == (g_arrayOfTasks[i].arrival + g_arrayOfTasks[i].period))
+				if (g_arrayOfTasks[i].handle && (rand() % 3 == 0))
 				{
 					vTaskDelete(g_arrayOfTasks[i].handle);
 					deleteTask(i);
@@ -65,7 +75,7 @@ void taskScheduler(void *a_pvParameters)
 				}
 				else if ((g_arrayOfTasks[i].arrival == g_time))
 				{
-					printf("\t\tcreate id:%d, ari:%d  pri: %d, com: %d, per: %d \n", g_arrayOfTasks[i].id, g_arrayOfTasks[i].arrival, g_arrayOfTasks[i].priority, g_arrayOfTasks[i].computation, g_arrayOfTasks[i].period);
+					printf("\t\t\t\tcreate task id:%d, ari:%d  pri: %d, com: %d, per: %d \n", g_arrayOfTasks[i].id, g_arrayOfTasks[i].arrival, g_arrayOfTasks[i].priority, g_arrayOfTasks[i].computation, g_arrayOfTasks[i].period);
 					xTaskCreate(genFunction, NULL, configMINIMAL_STACK_SIZE, (void *)&g_arrayOfTasks[i], g_arrayOfTasks[i].priority, &(g_arrayOfTasks[i].handle));
 				}
 			}
@@ -82,7 +92,7 @@ void genFunction(void *a_pvParameters)
 	while (1)
 	{
 		vTaskSuspendAll();
-		printf("t%d\n", t.id);
+		printf("\t\ttask: %d running\n", t.id);
 		xTaskResumeAll();
 	}
 }
@@ -125,11 +135,12 @@ double computeUtilization(Task a_tasksArr[], int a_size)
 void printTasks(Task a_tasksArr[], int a_size)
 {
 	int i = 0;
-	printf("Print called\n");
+	printf("\nTasks\n");
 	for (i = 0; i < a_size; i++)
 	{
 		printf("id:%d, ari:%d  pri: %d, com: %d, per: %d \n", a_tasksArr[i].id, a_tasksArr[i].arrival, a_tasksArr[i].priority, a_tasksArr[i].computation, a_tasksArr[i].period);
 	}
+	printf("\n");
 }
 
 void admitTask(Task a_newTask)
@@ -138,13 +149,13 @@ void admitTask(Task a_newTask)
 	Task *temp = malloc((g_currTasks + 1) * sizeof(Task));
 
 	vTaskSuspendAll();
-	printf("add %d, ", a_newTask.id);
+	printf("Add task with id: %d, ", a_newTask.id);
 	xTaskResumeAll();
 
 	if (!temp)
-		printf("allocNO\n");
+		printf("Memmory Allocation Failed\n");
 	else
-		printf("allocOK\n");
+		printf("Memmory Allocation OK\n");
 
 	for (i = 0; i < g_currTasks; i++)
 	{
@@ -164,12 +175,12 @@ void deleteTask(int a_index)
 	int i = 0;
 	Task *temp = malloc((g_currTasks - 1) * sizeof(Task));
 
-	printf("\t\tdel %d, ", g_arrayOfTasks[a_index].id);
+	printf("\t\t\t\tDelete task with id: %d, ", g_arrayOfTasks[a_index].id);
 
 	if (!temp)
-		printf("dallocNO\n");
+		printf("Memmory Deallocation Failed\n");
 	else
-		printf("dallocOK\n");
+		printf("Memmory Deallocation OK\n");
 
 	for (i = 0; i < a_index; i++)
 	{
