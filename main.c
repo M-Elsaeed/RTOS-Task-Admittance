@@ -88,11 +88,15 @@ void genFunction(void *a_pvParameters)
 {
 	Task t = *((Task *)(a_pvParameters));
 	portTickType tt = xTaskGetTickCount();
+	int i = 0;
 	while (1)
 	{
-		vTaskSuspendAll();
-		printf("\t\ttask: %d running\n", t.id);
-		xTaskResumeAll();
+		for (i = 0; i < t.computation; i++)
+		{
+			vTaskSuspendAll();
+			printf("\t\ttask: %d running\n", t.id);
+			xTaskResumeAll();
+		}
 		vTaskDelayUntil(&tt, t.period);
 	}
 }
