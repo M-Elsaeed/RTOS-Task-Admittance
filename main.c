@@ -13,14 +13,14 @@ typedef struct Task
 	xTaskHandle handle;
 } Task;
 
-void genFunction(void *a_pvParameters);
+void genericFunction(void *a_pvParameters);
 void taskScheduler(void *a_pvParameters);
 void sortAndPrioritize(Task a_tasksArr[], int a_size);
 void printTasks(Task a_tasksArr[], int a_size);
 void admitTask(Task a_newTask);
 void deleteTask(int a_index);
 double computeUtilization(Task a_tasksArr[], int a_size);
-void addRandomTasks();
+void synthesizeTasks();
 
 int g_currTasks = 0;
 Task *g_arrayOfTasks;
@@ -33,21 +33,44 @@ xTaskHandle g_schedulerHandle;
 #define MAXIMUM_COMPUTATION_TIME 8
 #define MAXIMUM_PERIOD_MULTIPLER 17
 #define SAFE_MODE 0
+#define DYNAMIC_MODE 0
 
 int main(void)
 {
-	addRandomTasks();
+#if DYNAMIC_MODE == 1
+	synthesizeTasks();
 	printTasks(g_arrayOfTasks, g_currTasks);
 	while (computeUtilization(g_arrayOfTasks, g_currTasks) > 0.7)
 	{
 		printf("Scheduling not possible\n");
 		g_currTasks = 0;
-		addRandomTasks();
+		synthesizeTasks();
 		printTasks(g_arrayOfTasks, g_currTasks);
 	}
 	printf("Scheduling OK\n\n");
-	// printf("max %d\n", g_maxTime);
 	xTaskCreate(taskScheduler, "scheduler", configMINIMAL_STACK_SIZE, NULL, N + 1, &g_schedulerHandle);
+#else
+	int i = 0;
+	synthesizeTasks();
+	printTasks(g_arrayOfTasks, g_currTasks);
+	while (computeUtilization(g_arrayOfTasks, g_currTasks) > 0.7)
+	{
+		printf("Scheduling not possible\n");
+		g_currTasks = 0;
+		synthesizeTasks();
+		printTasks(g_arrayOfTasks, g_currTasks);
+	}
+	printf("Scheduling OK\n\n");
+	g_maxTime = 150;
+	for (i = 0; i < g_currTasks; i++)
+	{
+		printf("\t\t\t\tcreate task id:%d, ari:%d  pri: %d, com: %d, per: %d \n", g_arrayOfTasks[i].id, g_arrayOfTasks[i].arrival, g_arrayOfTasks[i].priority, g_arrayOfTasks[i].computation, g_arrayOfTasks[i].period);
+		xTaskCreate(genericFunction, NULL, configMINIMAL_STACK_SIZE, (void *)&g_arrayOfTasks[i], g_arrayOfTasks[i].priority, &(g_arrayOfTasks[i].handle));
+	}
+	xTaskCreate(taskScheduler, "scheduler", configMINIMAL_STACK_SIZE, NULL, N + 1, &g_schedulerHandle);
+#endif
+	// printf("max %d\n", g_maxTime);
+
 	vTaskStartScheduler();
 	while (1)
 		;
@@ -56,17 +79,18 @@ int main(void)
 void taskScheduler(void *a_pvParameters)
 {
 	int i = 0;
-	portTickType ticksTime = 0;
+	portTickType ticksTime = xTaskGetTickCount();
 	while (1)
 	{
 		// if (ticksTime <= (g_maxTime + 1))
 		while (g_currTasks)
 		{
 			printf("t = %d\n", ticksTime);
+#if DYNAMIC_MODE == 1
 			for (i = 0; i < g_currTasks; i++)
 			{
-				// if (ticksTime == (g_arrayOfTasks[i].arrival + g_arrayOfTasks[i].period))
-				if (g_arrayOfTasks[i].handle && (rand() % 3 == 0))
+				// Only start random deletion after after all tasks are created and have runned at least once
+				if ((ticksTime > g_maxTime) && g_arrayOfTasks[i].handle && (rand() % 3 == 0))
 				{
 					vTaskDelete(g_arrayOfTasks[i].handle);
 					deleteTask(i);
@@ -75,16 +99,27 @@ void taskScheduler(void *a_pvParameters)
 				else if ((ticksTime >= g_arrayOfTasks[i].arrival) && (!g_arrayOfTasks[i].handle))
 				{
 					printf("\t\t\t\tcreate task id:%d, ari:%d  pri: %d, com: %d, per: %d \n", g_arrayOfTasks[i].id, g_arrayOfTasks[i].arrival, g_arrayOfTasks[i].priority, g_arrayOfTasks[i].computation, g_arrayOfTasks[i].period);
-					xTaskCreate(genFunction, NULL, configMINIMAL_STACK_SIZE, (void *)&g_arrayOfTasks[i], g_arrayOfTasks[i].priority, &(g_arrayOfTasks[i].handle));
+					xTaskCreate(genericFunction, NULL, configMINIMAL_STACK_SIZE, (void *)&g_arrayOfTasks[i], g_arrayOfTasks[i].priority, &(g_arrayOfTasks[i].handle));
 				}
 			}
+#else
+			if (ticksTime >= g_maxTime)
+			{
+				for (i = 0; i < g_currTasks; i++)
+				{
+					vTaskDelete(g_arrayOfTasks[i].handle);
+					deleteTask(i);
+					i--;
+				}
+			}
+#endif
 			ticksTime = xTaskGetTickCount();
 			vTaskSuspend(NULL);
 		}
 	}
 }
 
-void genFunction(void *a_pvParameters)
+void genericFunction(void *a_pvParameters)
 {
 	Task t = *((Task *)(a_pvParameters));
 	portTickType tt = xTaskGetTickCount();
@@ -201,18 +236,24 @@ void deleteTask(int a_index)
 	sortAndPrioritize(g_arrayOfTasks, g_currTasks);
 }
 
-void addRandomTasks()
+void synthesizeTasks()
 {
 
 	int i = 0;
 	Task tempTask;
-	srand(2);
+	// srand(2);
 	for (i = 0; i < N; i++)
 	{
 		tempTask.id = i + 1;
+
+#if DYNAMIC_MODE == 1
 		tempTask.arrival = rand() % (LATEST_ARRIVAL_TIME + 1);
 		// random from 1 to maximum_computation_time
 		tempTask.computation = (rand() % MAXIMUM_COMPUTATION_TIME) + 1;
+#else
+		tempTask.arrival = 0;
+		tempTask.computation = i + 1;
+#endif
 
 #if SAFE_MODE == 1
 		// Safe: random from 3xTc(i) to maximum_period_multipler x Tc(i)
