@@ -33,7 +33,7 @@ xTaskHandle g_schedulerHandle;
 #define MAXIMUM_COMPUTATION_TIME 8
 #define MAXIMUM_PERIOD_MULTIPLER 17
 #define SAFE_MODE 0
-#define DYNAMIC_MODE 0
+#define DYNAMIC_MODE 1
 
 int main(void)
 {
@@ -79,12 +79,14 @@ int main(void)
 void taskScheduler(void *a_pvParameters)
 {
 	int i = 0;
+	int newTaskId = N + 1;
 	portTickType ticksTime = xTaskGetTickCount();
 	while (1)
 	{
 		// if (ticksTime <= (g_maxTime + 1))
 		while (g_currTasks)
 		{
+			vTaskSuspendAll();
 			printf("t = %d\n", ticksTime);
 #if DYNAMIC_MODE == 1
 			for (i = 0; i < g_currTasks; i++)
@@ -92,16 +94,38 @@ void taskScheduler(void *a_pvParameters)
 				// Only start random deletion after after all tasks are created and have runned at least once
 				if ((ticksTime > g_maxTime) && g_arrayOfTasks[i].handle && (rand() % 3 == 0))
 				{
+					Task taskToCreate;
+
 					vTaskDelete(g_arrayOfTasks[i].handle);
 					deleteTask(i);
 					i--;
+
+					taskToCreate.id = newTaskId++;
+					taskToCreate.arrival = LATEST_ARRIVAL_TIME;
+					taskToCreate.computation = (rand() % MAXIMUM_COMPUTATION_TIME) + 1;
+					taskToCreate.handle = NULL;
+
+#if SAFE_MODE == 1
+					// Safe: random from 3xTc(i) to maximum_period_multipler x Tc(i)
+					taskToCreate.period = ((rand() % (MAXIMUM_PERIOD_MULTIPLER - 2)) + 3) * taskToCreate.computation;
+#else
+					// No Guarantee: random from from 3xTc(i) to 10xTc(i)
+					taskToCreate.period = ((rand() % (10 - 2)) + 3) * taskToCreate.computation;
+#endif
+					admitTask(taskToCreate);
+					// computeUtilization(g_arrayOfTasks, g_currTasks);
 				}
-				else if ((ticksTime >= g_arrayOfTasks[i].arrival) && (!g_arrayOfTasks[i].handle))
+				if ((ticksTime >= g_arrayOfTasks[i].arrival) && (!g_arrayOfTasks[i].handle))
 				{
 					printf("\t\t\t\tcreate task id:%d, ari:%d  pri: %d, com: %d, per: %d \n", g_arrayOfTasks[i].id, g_arrayOfTasks[i].arrival, g_arrayOfTasks[i].priority, g_arrayOfTasks[i].computation, g_arrayOfTasks[i].period);
 					xTaskCreate(genericFunction, NULL, configMINIMAL_STACK_SIZE, (void *)&g_arrayOfTasks[i], g_arrayOfTasks[i].priority, &(g_arrayOfTasks[i].handle));
 				}
 			}
+			for (i = 0; i < g_currTasks; i++)
+			{
+				vTaskPrioritySet(g_arrayOfTasks[i].handle, g_arrayOfTasks[i].priority);
+			}
+			xTaskResumeAll();
 #else
 			if (ticksTime >= g_maxTime)
 			{
