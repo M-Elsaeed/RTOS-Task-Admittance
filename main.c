@@ -87,6 +87,7 @@ void taskScheduler(void *a_pvParameters)
 		while (g_currTasks)
 		{
 			vTaskSuspendAll();
+			ticksTime = xTaskGetTickCount();
 			printf("t = %d\n", ticksTime);
 #if DYNAMIC_MODE == 1
 			for (i = 0; i < g_currTasks; i++)
@@ -125,7 +126,6 @@ void taskScheduler(void *a_pvParameters)
 			{
 				vTaskPrioritySet(g_arrayOfTasks[i].handle, g_arrayOfTasks[i].priority);
 			}
-			xTaskResumeAll();
 #else
 			if (ticksTime >= g_maxTime)
 			{
@@ -137,7 +137,7 @@ void taskScheduler(void *a_pvParameters)
 				}
 			}
 #endif
-			ticksTime = xTaskGetTickCount();
+			xTaskResumeAll();
 			vTaskSuspend(NULL);
 		}
 	}
